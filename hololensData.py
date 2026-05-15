@@ -11,8 +11,8 @@ app = Flask(__name__)
 
 
 # HOLOLENS WINDOWS DEVICE PORTAL CONFIG
-HOLOLENS_IP = "172.20.10.2"      # Replace with your HoloLens IP
-PORT = "443"                    # Your WDP port
+HOLOLENS_IP = "192.168.137.1"      # Replace with your HoloLens IP
+PORT = "50080"                    # Your WDP port
 USERNAME = "herjing"        # Replace
 PASSWORD = "12345678"        # Replace
 
