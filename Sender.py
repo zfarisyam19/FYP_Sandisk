@@ -39,9 +39,9 @@ LEFT_CTRL_STATE_TOPIC  = "/left_arm_controller/state"
 RIGHT_CTRL_STATE_TOPIC = "/right_arm_controller/state"
 
 # Run: ros2 run tf2_tools view_frames → open frames.pdf → find root frame
-TF_BASE_FRAME       = "base_link"             # ← update after checking view_frames
+TF_BASE_FRAME       = "base_link"
 TF_LEFT_TOOL_FRAME  = "left_grasp_link"
-TF_RIGHT_TOOL_FRAME = "right_grasp_link" # ← confirm exists in frames.pdf
+TF_RIGHT_TOOL_FRAME = "right_grasp_link"
 
 # Only these joints are extracted — everything else in /joint_states is ignored
 LEFT_JOINT_NAMES  = ["l_j1", "l_j2", "l_j3", "l_j4", "l_j5", "l_j6", "l_j7"]
@@ -58,8 +58,10 @@ _lock = threading.Lock()
 def _empty_joints():
     return {f"joint{i}": None for i in range(1, 8)}
 
+# ── CHANGE 1: added qx, qy, qz to _empty_pose ────────────────────────────────
 def _empty_pose():
-    return {"x": None, "y": None, "z": None, "qw": None}
+    return {"x": None, "y": None, "z": None,
+            "qx": None, "qy": None, "qz": None, "qw": None}
 
 _left_joints  = _empty_joints()
 _right_joints = _empty_joints()
@@ -143,6 +145,7 @@ class ArmSenderNode(Node):
         with _lock:
             _right_actual.update(_extract_ctrl_joints(msg, RIGHT_JOINT_NAMES))
 
+    # ── CHANGE 2: capture qx, qy, qz, qw from TF ─────────────────────────────
     def _tf_timer(self):
         for frame, pose_dict in [
             (TF_LEFT_TOOL_FRAME,  _left_pose),
@@ -158,6 +161,9 @@ class ArmSenderNode(Node):
                     pose_dict["x"]  = round(tr.x, 6)
                     pose_dict["y"]  = round(tr.y, 6)
                     pose_dict["z"]  = round(tr.z, 6)
+                    pose_dict["qx"] = round(ro.x, 6)   # ← NEW
+                    pose_dict["qy"] = round(ro.y, 6)   # ← NEW
+                    pose_dict["qz"] = round(ro.z, 6)   # ← NEW
                     pose_dict["qw"] = round(ro.w, 6)
             except Exception:
                 pass
@@ -174,8 +180,7 @@ def ros2_thread():
         rclpy.shutdown()
 
 # =============================================================================
-# HAND GRIPPER — original random placeholder (unchanged from original Sender.py)
-# Replace with real data when the hand team is ready
+# HAND GRIPPER — original random placeholder (unchanged)
 # =============================================================================
 
 def _random_gripper():
@@ -187,7 +192,6 @@ def _random_gripper():
         "current"            : [round(random.uniform(0, 1), 2) for _ in range(5)],
     }
 
-# Load hand JSON if it exists, otherwise use a safe default
 try:
     with open("HandData.json", "r") as f:
         _hand_data = json.load(f)
@@ -211,29 +215,36 @@ def get_data_robot_arm():
         right_a = dict(_right_actual)
         ts      = _ros_timestamp or (datetime.utcnow().isoformat() + "Z")
 
+    # ── CHANGE 3: send full quaternion qx, qy, qz, qw in tool_link ───────────
     formatted = {
         "device_type" : "robot_arm",
         "device_id"   : ROBOT_ID,
         "timestamp"   : ts,
         "data": {
             "left": {
-                "joint"       : left_j,          # commanded from /joint_states
-                "joint_actual": left_a,           # actual from controller state
+                "joint"       : left_j,
+                "joint_actual": left_a,
                 "tool_link"   : {
-                    "x": left_p["x"],
-                    "y": left_p["y"],
-                    "z": left_p["z"],
-                    "w": left_p["qw"],            # qw → existing "w" DB column
+                    "x" : left_p["x"],
+                    "y" : left_p["y"],
+                    "z" : left_p["z"],
+                    "qx": left_p["qx"],   # ← NEW
+                    "qy": left_p["qy"],   # ← NEW
+                    "qz": left_p["qz"],   # ← NEW
+                    "w" : left_p["qw"],   # qw → existing "w" DB column
                 },
             },
             "right": {
                 "joint"       : right_j,
                 "joint_actual": right_a,
                 "tool_link"   : {
-                    "x": right_p["x"],
-                    "y": right_p["y"],
-                    "z": right_p["z"],
-                    "w": right_p["qw"],
+                    "x" : right_p["x"],
+                    "y" : right_p["y"],
+                    "z" : right_p["z"],
+                    "qx": right_p["qx"],  # ← NEW
+                    "qy": right_p["qy"],  # ← NEW
+                    "qz": right_p["qz"],  # ← NEW
+                    "w" : right_p["qw"],
                 },
             },
         }
@@ -241,7 +252,7 @@ def get_data_robot_arm():
     return Response(json.dumps(formatted), mimetype="application/json")
 
 
-# ── Hand Gripper (random placeholder — unchanged from original) ───────────────
+# ── Hand Gripper (random placeholder — unchanged) ─────────────────────────────
 
 @app.route("/dataHandGripper", methods=["GET"])
 def get_data_hand():
@@ -258,9 +269,7 @@ def get_data_hand():
     return Response(json.dumps(formatted), mimetype="application/json")
 
 
-# ── HoloLens (random placeholder — unchanged from original) ──────────────────
-# This endpoint is on port 5001 in Retriever.py, so it won't be called here
-# unless you move it. Kept here as a reference stub only.
+# ── HoloLens (random placeholder — unchanged) ─────────────────────────────────
 
 @app.route("/dataHoloLens", methods=["GET"])
 def get_data_hololens():

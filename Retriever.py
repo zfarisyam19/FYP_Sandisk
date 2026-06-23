@@ -44,6 +44,7 @@ def create_tables(cursor):
         )
     """)
 
+    # ── CHANGE 1: added qx, qy, qz columns to robot_arm_tool ─────────────────
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS robot_arm_tool (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -52,6 +53,9 @@ def create_tables(cursor):
             x FLOAT,
             y FLOAT,
             z FLOAT,
+            qx FLOAT,
+            qy FLOAT,
+            qz FLOAT,
             w FLOAT,
             timestamp DATETIME,
             INDEX idx_robot (robot_id),
@@ -168,8 +172,8 @@ VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
 
 sql_tool = """
 INSERT INTO robot_arm_tool
-(robot_id, arm_side, x, y, z, w, timestamp)
-VALUES (%s,%s,%s,%s,%s,%s,%s)
+(robot_id, arm_side, x, y, z, qx, qy, qz, w, timestamp)
+VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
 """
 
 sql_hand = """
@@ -269,7 +273,10 @@ def process_and_save(conn, cursor):
                         tool.get("x"),
                         tool.get("y"),
                         tool.get("z"),
-                        tool.get("w"),
+                        tool.get("qx"),   # ← NEW
+                        tool.get("qy"),   # ← NEW
+                        tool.get("qz"),   # ← NEW
+                        tool.get("w"),    # qw
                         ts
                     )
 
